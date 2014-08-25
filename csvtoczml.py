@@ -3,14 +3,17 @@
 # zcml: https://github.com/AnalyticalGraphicsInc/cesium/wiki/CZML-Structure
 # CSV: time,latitude,longitude,depth,mag,magType,nst,gap,dmin,rms,net,id,updated,place,type
 #      depth is Km, Cesium uses meters
+# Get CSV (or GeoJson or KML) from:
+# http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_month.geojson
 
 # Plot lat/lon on surface sized and colored by magnitude,
 # and draw line down to depth.
 # Drag resulting ZCML file to Cesium:
 #  http://cesiumjs.org/Cesium/Build/Apps/CesiumViewer/index.html
 
-# TODO: Use the Python CZML library (no usage docs)
-# https://github.com/cleder/czml
+# TODO:
+# - Use the Python CZML library (no usage docs) https://github.com/cleder/czml
+# - Pull CSV (or GeoJSON) live from USGS http://earthquake.usgs.gov/earthquakes/feed/
 
 import csv
 import datetime
@@ -21,14 +24,12 @@ CSVFILE = '2.5_month.csv'
 MIN_MAG = 2.5
 MAX_MAG = 6.0
 
-now = datetime.datetime.now().isoformat().replace('-', '').replace(':', '')[:15] + 'Z'
+now = datetime.datetime.utcnow().isoformat().replace('-', '').replace(':', '')[:15] + 'Z'
 quakes = [{'id': 'document', 'version': '1.0'}]
 
 with open(CSVFILE, 'r') as csvfile:
-    cr = csv.DictReader(csvfile)
-    for row in cr:
-        time = row['time']       # 2014-08-21T13:37:43.000Z, we need 20120101T000000Z
-        time = time.replace('-', '').replace(':', '').replace('.000', '')
+    for row in csv.DictReader(csvfile):
+        time = row['time'].replace('-', '').replace(':', '').replace('.000', '')
         lon = float(row['longitude'])
         lat = float(row['latitude'])
         mag = float(row['mag'])
@@ -38,7 +39,7 @@ with open(CSVFILE, 'r') as csvfile:
         mag_color = min(255, 255 * max(0, mag - MIN_MAG) / (MAX_MAG - MIN_MAG))
         quake = {'id': row['id'],
                  'availability': time + '/' + now,
-                 'name': name_text, #row['place'],
+                 'name': name_text,
                  'position': {'cartographicDegrees': [lon, lat, 0.0]},
                  'point': {
                      'color': {'rgba': [255, mag_color, 0, 255] },
@@ -49,10 +50,11 @@ with open(CSVFILE, 'r') as csvfile:
             quake['polyline'] = {
                 'positions': {'cartographicDegrees': [lon, lat, -1 * depth,
                                                       lon, lat, 0]},
-                      "material": { "solidColor": { "color": { "rgba": [ 255, 255, 0, 153 ] } } },
-                      'show': True,
+                "material": { "solidColor": { "color": { "rgba": [ 255, 255, 0, 153 ] } } },
+                'show': True,
             }
         quakes.append(quake)
+
 print json.dumps(quakes, indent=4, sort_keys=True)
 
 
