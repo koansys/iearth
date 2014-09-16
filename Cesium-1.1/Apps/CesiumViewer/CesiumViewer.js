@@ -168,16 +168,33 @@ define([
         // - WMTS Code: Cesium-1.1/Source/Scene/WebMapTileServiceImageryProvider.js
         // Gets back images! Request URLs look like:
         // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=3&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=1&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
+        // with width
+        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=1&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
+        // without:
+        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=2&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
+
+        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=2&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=default&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
+
+    var credit = new Credit('NASA', 'http://nsidc.org/images/logo_nasa_42x35.gif',
+                            'https://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs/gibs-access-methods');
+    var nasa_gibs_endpoint = 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi'; // Cesium appends '?' if needed
+
+
+    var modis = {'layer': 'MODIS_Terra_CorrectedReflectance_TrueColor', 'tmsid': 'EPSG4326_250m', 'format': 'image/jpeg'};
+    var airs =  {'layer': 'AIRS_CO_Total_Column_Day',                   'tmsid': 'EPSG4326_2km', 'format': 'image/png'};
+    var mlstmp = {'layer': 'MLS_Temperature_46hPa_Day', 'tmsid': 'EPSG4326_2km', 'format': 'image/png'};
+    var landtmp = {'layer': 'MODIS_Terra_Land_Surface_Temp_Day', 'tmsid': 'EPSG4326_1km', 'format': 'image/png'};
+    var source = landtmp;
 
     imageryProvider = new WebMapTileServiceImageryProvider({
-        url: 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi', // Cesium appends '?' if needed
-        layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
-        format: 'image/jpeg',
-        style: '',
+        url: nasa_gibs_endpoint,
+        layer: source.layer,//'MODIS_Terra_CorrectedReflectance_TrueColor',
+        tileMatrixSetID: source.tmsid,//'EPSG4326_250m',
+        format: source.format, //'image/jpeg',   // default is jpeg
+        // tileWidth and tileHeight don't seem to affect URL or display
+        style: 'default',       // required but '' or 'default' don't change things
         maximumLevel: 9,
-        tileMatrixSetID: 'EPSG4326_250m',
-        tileWdith: 512,
-        tileHeight: 512,
+        credit: credit
         });
 
 
