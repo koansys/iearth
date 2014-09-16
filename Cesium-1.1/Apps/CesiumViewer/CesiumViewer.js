@@ -115,18 +115,18 @@ define([
         //      http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=2&LAYER=AMSRE_Brightness_Temp_89H_Day&STYLE=default&TILEROW=3&TILECOL=1&TILEMATRIXSET=EPSG4326_2km&FORMAT=image/png
 
     //http://cesiumjs.org/Cesium/Build/Documentation/WebMapTileServiceImageryProvider.html?classFilter=imageryprovider
-    imageryProvider = new WebMapTileServiceImageryProvider({
-        url: 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi', // maybe without ?request=GEtMap
-        format : 'image/png',
-        layer : 'AMSRE_Brightness_Temp_89H_Day',
-        style : 'default',
-        tileMatrixSetID : 'EPSG4326_2km',
-        tileWidth : 512,
-        tileHeight : 512,
-        maximumLevel: 8,        // 19 creates invlid time matrix?
-        credit: new Credit('Credit where Credit is Due'),
-        // srs : 'EPSG:4326',      // Ignored?
-        });
+    // imageryProvider = new WebMapTileServiceImageryProvider({
+    //     url: 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi', // maybe without ?request=GEtMap
+    //     format : 'image/png',
+    //     layer : 'AMSRE_Brightness_Temp_89H_Day',
+    //     style : 'default',
+    //     tileMatrixSetID : 'EPSG4326_2km',
+    //     tileWidth : 512,
+    //     tileHeight : 512,
+    //     maximumLevel: 8,        // 19 creates invlid time matrix?
+    //     credit: new Credit('Credit where Credit is Due'),
+    //     // srs : 'EPSG:4326',      // Ignored?
+    //     });
         // 
     // imageryProvider = new WebMapServiceImageryProvider({
     //     url: 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
@@ -140,6 +140,48 @@ define([
     //     maximumLevel: 8,        // 19 creates invlid time matrix?
     //     });
         // 
+
+
+    // 2014-09-16
+        // NASA
+        // - NASA offers WMTS and Tile WMS; try the former for now;
+        // - WMTS in KVP or REST (Cesium-1.1 only supports KVP, with certain orders!)
+        // - KVP: http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?...
+        // - NASA appears to have some hacked params that Cesium can't support, like 'time'.
+        // - CAUTION: NASA parameters must currently be ordered in a specific way as noted here.
+        // - OpenLayers example:
+        // -- https://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs/gibs-supported-clients#web_based_clients
+        // - Important Notes
+        // -- Non-polar tiled imagery from GIBS is currently only available
+        //    in the geographic projection (also known as equirectangular,
+        //    equidistant cylindrical, or EPSG:4326). We realize that many
+        //    web mapping clients require tiles to be in the web mercator
+        //    projection system (e.g., Google Maps, OpenStreetMap) and are
+        //    actively working to provide imagery in both formats.
+        // -- The ordering of Key-Value Pairs for WMTS or TWMS requests is
+        //    relatively inflexible; the servers are configured to respond to
+        //    the parameter ordering used by popular map clients (see
+        //    Supported Clients).
+    
+        // Cesium
+        // - WMTS options: https://cesiumjs.org/Cesium/Build/Documentation/WebMapTileServiceImageryProvider.html
+        // - WMTS Code: Cesium-1.1/Source/Scene/WebMapTileServiceImageryProvider.js
+        // Gets back images! Request URLs look like:
+        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=3&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=1&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
+
+    imageryProvider = new WebMapTileServiceImageryProvider({
+        url: 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi', // Cesium appends '?' if needed
+        layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
+        format: 'image/jpeg',
+        style: '',
+        maximumLevel: 9,
+        tileMatrixSetID: 'EPSG4326_250m',
+        tileWdith: 512,
+        tileHeight: 512,
+        });
+
+
+
 
     var viewer;
     try {
