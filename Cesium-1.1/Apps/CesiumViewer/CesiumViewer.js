@@ -167,24 +167,29 @@ define([
         // - WMTS options: https://cesiumjs.org/Cesium/Build/Documentation/WebMapTileServiceImageryProvider.html
         // - WMTS Code: Cesium-1.1/Source/Scene/WebMapTileServiceImageryProvider.js
         // Gets back images! Request URLs look like:
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=3&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=1&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
-        // with width
         // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=1&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
-        // without:
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=2&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
 
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=2&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=default&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
+        // I can manually append to the url &time=2014-01-01 or similar, but
+        // will have to hack the Cesium code to support this.
 
     var credit = new Credit('NASA', 'http://nsidc.org/images/logo_nasa_42x35.gif',
                             'https://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs/gibs-access-methods');
     var nasa_gibs_endpoint = 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi'; // Cesium appends '?' if needed
-
-
-    var modis = {'layer': 'MODIS_Terra_CorrectedReflectance_TrueColor', 'tmsid': 'EPSG4326_250m', 'format': 'image/jpeg'};
-    var airs =  {'layer': 'AIRS_CO_Total_Column_Day',                   'tmsid': 'EPSG4326_2km', 'format': 'image/png'};
-    var mlstmp = {'layer': 'MLS_Temperature_46hPa_Day', 'tmsid': 'EPSG4326_2km', 'format': 'image/png'};
-    var landtmp = {'layer': 'MODIS_Terra_Land_Surface_Temp_Day', 'tmsid': 'EPSG4326_1km', 'format': 'image/png'};
-    var source = landtmp;
+    
+    var sources = {'modis':   {'layer': 'MODIS_Terra_CorrectedReflectance_TrueColor',
+                               'tmsid': 'EPSG4326_250m',
+                               'format': 'image/jpeg'},
+                   'airs':    {'layer': 'AIRS_CO_Total_Column_Day',
+                               'tmsid': 'EPSG4326_2km',
+                               'format': 'image/png'},
+                   'mlstmp':  {'layer': 'MLS_Temperature_46hPa_Day',
+                               'tmsid': 'EPSG4326_2km',
+                               'format': 'image/png'},
+                   'landtmp': {'layer': 'MODIS_Terra_Land_Surface_Temp_Day',
+                               'tmsid': 'EPSG4326_1km',
+                               'format': 'image/png'},
+                   };
+    var source = sources['modis'];
 
     imageryProvider = new WebMapTileServiceImageryProvider({
         url: nasa_gibs_endpoint,
