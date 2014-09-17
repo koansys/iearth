@@ -106,7 +106,11 @@ define([
     //         url : endUserOptions.tmsImageryUrl
     //     });
     // }
-
+    var eosdisSrc = 'modis';    // default to visiable vie
+    if (endUserOptions.eosdisSrc) {
+        eosdisSrc = endUserOptions.eosdisSrc;
+    };
+        
         
         // This gets some empty tiles then Invalid TILEMATRIX
         // OK:  http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=2&LAYER=AMSRE_Brightness_Temp_89H_Day&STYLE=default&TILEROW=1&TILECOL=3&TILEMATRIXSET=EPSG4326_2km&FORMAT=image/png
@@ -169,6 +173,11 @@ define([
         // Gets back images! Request URLs look like:
         // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=1&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
 
+        // Getting bad request for some tiles:
+        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=3&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=6&TILECOL=6&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
+        // <Exception exceptionCode="TileOutOfRange" locator="TILEROW">
+        //   <ExceptionText>TILEROW is out of range, maximum value is 4</ExceptionText>
+
         // I can manually append to the url &time=2014-01-01 or similar, but
         // will have to hack the Cesium code to support this.
 
@@ -189,7 +198,7 @@ define([
                                'tmsid': 'EPSG4326_1km',
                                'format': 'image/png'},
                    };
-    var source = sources['modis'];
+    var source = sources[eosdisSrc];
 
     imageryProvider = new WebMapTileServiceImageryProvider({
         url: nasa_gibs_endpoint,
@@ -197,9 +206,10 @@ define([
         tileMatrixSetID: source.tmsid,//'EPSG4326_250m',
         format: source.format, //'image/jpeg',   // default is jpeg
         // tileWidth and tileHeight don't seem to affect URL or display
-        style: 'default',       // required but '' or 'default' don't change things
+        style: '',       // required but '' or 'default' don't change things
         maximumLevel: 9,
-        credit: credit
+        credit: credit,
+        time: '2014-01-01',
         });
 
 
