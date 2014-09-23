@@ -148,6 +148,15 @@ define([
         time: '2014-01-01',     // not added to URL, need to hack code :-(
     });
 
+    // var wmts = new WebMapTileServiceImageryProvider({
+    //     url: 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
+    //     layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
+    //     tileMatrixSetID: 'EPSG4326_250m',
+    //     format: 'image/jpeg',
+    //     style: '',
+    // });
+
+
     // NASA GIBS: Tiled WMS 
     // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?request=GetCapabilities
 
@@ -210,19 +219,19 @@ define([
     // why isn't MY parameters overriding default {service:'WMS', version:'1.1.1', request:'GetMap', styles:'', format:'image/jpeg'
     // 2014-09-23 I give up, can't seem to get anything that seems right, even the sample images I pull seem "torn" and broken, or else all black.
 
-    var twms = new WebMapServiceImageryProvider({
-        url: 'http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi',
-        layers: nasaSource.layer,// TWMS is PLURAL 'MODIS_Terra_CorrectedReflectance_TrueColor',
-        tilingScheme: new GeographicTilingScheme(), // no change
-        //parameters: {'time':'2014-09-12'}, // {'HI':'MOM'} becomes &hi=MOM&
-        enablePickFeatures: true,
-        //getFeatureInfoParameters: wtf,
-        getFeatureInfoAsXml: true, // it never asks NASA for Get
-        //rectangle: wtf,
-        //tilingScheme: new GeographicTilingScheme(),
-        tileWidth: 512,
-        tileHeight: 512,
-    });
+    // var twms = new WebMapServiceImageryProvider({
+    //     url: 'http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi',
+    //     layers: nasaSource.layer,// TWMS is PLURAL 'MODIS_Terra_CorrectedReflectance_TrueColor',
+    //     tilingScheme: new GeographicTilingScheme(), // no change
+    //     //parameters: {'time':'2014-09-12'}, // {'HI':'MOM'} becomes &hi=MOM&
+    //     enablePickFeatures: true,
+    //     //getFeatureInfoParameters: wtf,
+    //     getFeatureInfoAsXml: true, // it never asks NASA for Get
+    //     //rectangle: wtf,
+    //     //tilingScheme: new GeographicTilingScheme(),
+    //     tileWidth: 512,
+    //     tileHeight: 512,
+    // });
         
     // imageryProvider = twms;
     // wmts works, but image not wrapped quite right:
