@@ -7,21 +7,36 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
     <!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
-    <title>Cesium Viewer</title>
+    <title>iEarth</title>
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="CesiumViewer.css" media="screen">
     <script data-main="CesiumViewerStartup" src="../../ThirdParty/requirejs-2.1.9/require.js"></script>
+    <!-- hack srcPicker link colors to make them more visible -->
+    <style>
+      a {color: lightgreen}
+      a:visited {color: lightblue}
+    </style>
 </head>
 <body style="background: #000;">
     <div id="srcPicker">
+      Data Source: 
       <a href="?eosdisSrc=airs">AIRS CO Day</a>
-      <br/>
+      &middot;
       <a href="?eosdisSrc=mlstmp">MLS Temperature</a>
-      <br/>
+      &middot;
       <a href="?eosdisSrc=landtmp">MODIS Terra Land Temp</a>
-      <br/>
+      &middot;
       <a href="?eosdisSrc=modis">MODIS Terra TrueColor</a>
-    <div id="cesiumContainer" class="fullWindowXXX"></div>
+      &middot;
+      <a href="?eosdisSrc=omiaero">OMI Aerosol</a>
+      &middot;
+      <a href="?eosdisSrc=seatemp">Sea Temperature</a>
+      &middot;
+      <a href="?eosdisSrc=viirs">VIIRS Earth at Night</a>
+      &middot;
+      <a href="?eosdisSrc=refs">Reference Features</a>
+    </div>
+    <div id="cesiumContainer" class="fullWindow"></div> <!-- doesn't give full height when XXX -->
     <div id="loadingIndicator" class="loadingIndicator"></div>
 </body>
 </html>

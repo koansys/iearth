@@ -173,10 +173,15 @@ define([
         // Gets back images! Request URLs look like:
         // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=1&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
 
-        // Getting bad request for some tiles:
+        // TODO: Getting bad request for some tiles: [ask Cesium folks? is it EPSG4326 projection issues?]
         // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=3&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=6&TILECOL=6&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
         // <Exception exceptionCode="TileOutOfRange" locator="TILEROW">
         //   <ExceptionText>TILEROW is out of range, maximum value is 4</ExceptionText>
+
+        // We may have to spec a TilingScheme to be GeographicTilingScheme
+        // with the max number of horz and vert tiles in each direction,
+        // from the XML capabilities for the dataset.
+        // https://cesiumjs.org/Cesium/Build/Documentation/GeographicTilingScheme.html
 
         // I can manually append to the url &time=2014-01-01 or similar, but
         // will have to hack the Cesium code to support this.
@@ -197,10 +202,23 @@ define([
                    'landtmp': {'layer': 'MODIS_Terra_Land_Surface_Temp_Day',
                                'tmsid': 'EPSG4326_1km',
                                'format': 'image/png'},
+                   'omiaero': {'layer': 'OMI_Aerosol_Index',
+                               'tmsid': 'EPSG4326_2km',
+                               'format': 'image/png'},
+                   'refs':    {'layer': 'Reference_Features',
+                               'tmsid': 'EPSG4326_250m',
+                               'format': 'image/png'},
+                   'seatemp': {'layer': 'Sea_Surface_Temp_Blended',
+                               'tmsid': 'EPSG4326_1km',
+                               'format': 'image/png'},
+                   'viirs':   {'layer': 'VIIRS_CityLights_2012',
+                               'tmsid': 'EPSG4326_500m',
+                               'format': 'image/jpeg'},
+                   
                    };
     var source = sources[eosdisSrc];
 
-    imageryProvider = new WebMapTileServiceImageryProvider({
+    var wmts = new WebMapTileServiceImageryProvider({
         url: nasa_gibs_endpoint,
         layer: source.layer,//'MODIS_Terra_CorrectedReflectance_TrueColor',
         tileMatrixSetID: source.tmsid,//'EPSG4326_250m',
@@ -209,11 +227,39 @@ define([
         style: '',       // required but '' or 'default' don't change things
         maximumLevel: 9,
         credit: credit,
-        time: '2014-01-01',
-        });
+        time: '2014-01-01',     // not added to URL, need to hack code :-(
+    });
 
+    // NASA GIBS: Tiled WMS 
+    // 
+    // As described in the introduction, the Tiled WMS server offers fast
+    // response to a limited number of WMS access patterns - specifically
+    // those access patterns which provide geographic bounds which fall along
+    // the edges of pregenerated tiles.
+    //
+    // Those patterns are described in the TWMS GetTileService request. The
+    // response is an XML encoded list of available WMS access patterns. A
+    // TiledPattern access pattern is a set gridded WMS requests, where
+    // parameter order, case and content are constant, with the exception of
+    // the bbox values. Using this pattern allows fast access to tiles for a
+    // given combination of layers and associated styles at a given
+    // resolution over a defined area.
 
+    // NASA Tile Pattern: http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?request=GetTileService
+    //
+    // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?request=GetMap&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&format=image%2Fjpeg&styles=&time=2014-09-12&width=512&height=512&bbox=-180,88.875,-178.875,90
 
+    // requested URL like:
+    // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?service=WMS&version=1.1.1&request=GetMap&styles=&format=image/jpeg&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&bbox=-90,0,0,90&width=256&height=256&
+
+    var twms = new WebMapServiceImageryProvider({
+        url: 'http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi',
+        layers: source.layer,// TWMS is PLURAL 'MODIS_Terra_CorrectedReflectance_TrueColor',
+        parameters: {'HI':'MOM'},
+    });
+        
+        //imageryProvider = twms;
+    imageryProvider = wmts;
 
     var viewer;
     try {
