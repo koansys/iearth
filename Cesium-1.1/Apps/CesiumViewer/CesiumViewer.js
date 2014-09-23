@@ -4,6 +4,7 @@ define([
         'Core/defined',
         'Core/formatError',
         'Core/getFilenameFromUri',
+        'Core/GeographicTilingScheme',
         'DataSources/CzmlDataSource',
         'DataSources/GeoJsonDataSource',
         'Scene/WebMapServiceImageryProvider',
@@ -18,6 +19,7 @@ define([
         defined,
         formatError,
         getFilenameFromUri,
+        GeographicTilingScheme,
         CzmlDataSource,
         GeoJsonDataSource,
         WebMapServiceImageryProvider,
@@ -27,7 +29,7 @@ define([
         viewerDragDropMixin,
         viewerEntityMixin) {
     "use strict";
-    /*global console*/
+    /*global console, document, window*/
 
     /*
      * 'debug'  : true/false,   // Full WebGL error reporting at substantial performance cost.
@@ -52,177 +54,93 @@ define([
 
     var loadingIndicator = document.getElementById('loadingIndicator');
 
-        
-    // WMTS tiled: http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?request=GetTileService
-    //the OGC WMTS "getCapabilities" http:
-    //call://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?request=GetCapabilities
-    //http://map1.vis.earthdata.nasa.gov/wmts-geo/1.0.0/WMTSCapabilities.xml
-    //http://map1.vis.earthdata.nasa.gov/wmts-geo/1.0.0/WMTSCapabilities.xml
-
-    //http://map1.vis.earthdata.nasa.gov/wmts-geo/VIIRS_CityLights_2012/default/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpg
-    // TimeMatrixSet: EPSG4326_16km (or EPSG4326_500m?); TileMatrix: 0, 1, 2
-    //http://map1.vis.earthdata.nasa.gov/wmts-geo/VIIRS_CityLights_2012/default/EPSG4326_16km/0/{TileRow}/{TileCol}.jpg
-
-        //        Web Map Service (WMS)       - OGC std for a geographic region from distributed geospatial databases.         see WebMapServiceImageryProvider.
-        //OpenGIS Web Map Tile Service (WMTS) - OGC std for pre-rendered georeferenced map tiles over the Internet. In Cesium, see WebMap[Tile?]ServiceImageryProvider.
-        //Tile Map Service (TMS)              - REST interface for accessing map tiles. Tiles generated with MapTiler or GDAL2Tiles. see TileMapServiceImageryProvider.
-
-        //https://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs/gibs-available-imagery-products
-        //Access to this imagery is provided via Open Geospatial
-        //Consortium (OGC) Web Map Tile Service (WMTS), Tiled WMS
-        //(TWMS), and Google Earth KML generation as described in the
-        //Access Methods section.
-        
-        // So use Cesium WebMap[Tile?]ServiceImageryProvider (OGC WTMS) with
-        // GIBS the OGC WMTS "getCapabilities" call:
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?request=GetCapabilities
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/1.0.0/WMTSCapabilities.xml
-        // Cesium WebMapTileServiceImageryProvider does WMTS 1.0.0 service with KVP requests (not REST, SOAP)
-
-        // Format invalid for Layer:
-        //http://map1.vis.earthdata.nasa.gov/wmts-geo/?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=1&LAYER=AMSRE_Brightness_Temp_89H_Day&STYLE=default&TILEROW=1&TILECOL=0&TILEMATRIXSET=EPSG4326_2km&FORMAT=image/jpeg
-        // From getTileService query, TilePattern:
-        //                                         GetMap&layers=AMSRE_Brightness_Temp_89H_Day&srs=EPSG:4326&format=image%2Fpng&styles=&width=512&height=512&bbox=-180,81,-171,90
-        // // GetMap
-        //     &layers=AMSRE_Brightness_Temp_89H_Day
-        //     &srs=EPSG:4326
-        //     &format=image%2Fpng
-        //     &styles=
-        //     &width=512
-        //     &height=512
-        //     &bbox=-180,81,-171,90
-
-        // Entered in URL bar or curl, this returns a PNG:
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?request=GetMap&layers=AMSRE_Brightness_Temp_89H_Day&srs=EPSG:4326&format=image%2Fpng&styles=&width=512&height=512&bbox=-180,81,-171,90
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?request=GetTile&layers=AMSRE_Brightness_Temp_89H_Day&srs=EPSG:4326&format=image%2Fpng&styles=&width=512&height=512&bbox=-180,81,-171,90
-        //
-        // Generated URL throws TILEROW is out of range, maximum value is 4
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=3&LAYER=AMSRE_Brightness_Temp_89H_Day&STYLE=default&TILEROW=7&TILECOL=3&TILEMATRIXSET=EPSG4326_2km&FORMAT=image/png
-
-
     var imageryProvider;
     // if (endUserOptions.tmsImageryUrl) {
     //     imageryProvider = new TileMapServiceImageryProvider({
     //         url : endUserOptions.tmsImageryUrl
     //     });
     // }
-    var eosdisSrc = 'modis';    // default to visiable vie
-    if (endUserOptions.eosdisSrc) {
-        eosdisSrc = endUserOptions.eosdisSrc;
-    };
-        
-        
-        // This gets some empty tiles then Invalid TILEMATRIX
-        // OK:  http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=2&LAYER=AMSRE_Brightness_Temp_89H_Day&STYLE=default&TILEROW=1&TILECOL=3&TILEMATRIXSET=EPSG4326_2km&FORMAT=image/png
-        // BAD: http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=9&LAYER=AMSRE_Brightness_Temp_89H_Day&STYLE=default&TILEROW=203&TILECOL=119&TILEMATRIXSET=EPSG4326_2km&FORMAT=image/png
-        // TILEROW out of range, max is 2:
-        //      http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=2&LAYER=AMSRE_Brightness_Temp_89H_Day&STYLE=default&TILEROW=3&TILECOL=1&TILEMATRIXSET=EPSG4326_2km&FORMAT=image/png
-
-    //http://cesiumjs.org/Cesium/Build/Documentation/WebMapTileServiceImageryProvider.html?classFilter=imageryprovider
-    // imageryProvider = new WebMapTileServiceImageryProvider({
-    //     url: 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi', // maybe without ?request=GEtMap
-    //     format : 'image/png',
-    //     layer : 'AMSRE_Brightness_Temp_89H_Day',
-    //     style : 'default',
-    //     tileMatrixSetID : 'EPSG4326_2km',
-    //     tileWidth : 512,
-    //     tileHeight : 512,
-    //     maximumLevel: 8,        // 19 creates invlid time matrix?
-    //     credit: new Credit('Credit where Credit is Due'),
-    //     // srs : 'EPSG:4326',      // Ignored?
-    //     });
-        // 
-    // imageryProvider = new WebMapServiceImageryProvider({
-    //     url: 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
-    //     layers : 'AMSRE_Brightness_Temp_89H_Day',
-    //     style : 'default',
-    //     format : 'image/png',
-    //     tileMatrixSetID : 'EPSG4326_2km',
-    //     tileWidth : 512,
-    //     tileHeight : 512,
-    //     srs : 'EPSG:4326',
-    //     maximumLevel: 8,        // 19 creates invlid time matrix?
-    //     });
-        // 
-
 
     // 2014-09-16
-        // NASA
-        // - NASA offers WMTS and Tile WMS; try the former for now;
-        // - WMTS in KVP or REST (Cesium-1.1 only supports KVP, with certain orders!)
-        // - KVP: http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?...
-        // - NASA appears to have some hacked params that Cesium can't support, like 'time'.
-        // - CAUTION: NASA parameters must currently be ordered in a specific way as noted here.
-        // - OpenLayers example:
-        // -- https://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs/gibs-supported-clients#web_based_clients
-        // - Important Notes
-        // -- Non-polar tiled imagery from GIBS is currently only available
-        //    in the geographic projection (also known as equirectangular,
-        //    equidistant cylindrical, or EPSG:4326). We realize that many
-        //    web mapping clients require tiles to be in the web mercator
-        //    projection system (e.g., Google Maps, OpenStreetMap) and are
-        //    actively working to provide imagery in both formats.
-        // -- The ordering of Key-Value Pairs for WMTS or TWMS requests is
-        //    relatively inflexible; the servers are configured to respond to
-        //    the parameter ordering used by popular map clients (see
-        //    Supported Clients).
-    
-        // Cesium
-        // - WMTS options: https://cesiumjs.org/Cesium/Build/Documentation/WebMapTileServiceImageryProvider.html
-        // - WMTS Code: Cesium-1.1/Source/Scene/WebMapTileServiceImageryProvider.js
-        // Gets back images! Request URLs look like:
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=1&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
+    // NASA
+    // - NASA offers WMTS and Tile WMS; try the former for now;
+    // - WMTS in KVP or REST (Cesium-1.1 only supports KVP, with certain orders!)
+    // - KVP: http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?...
+    // - NASA appears to have some hacked params that Cesium can't support, like 'time'.
+    // - CAUTION: NASA parameters must currently be ordered in a specific way as noted here.
+    // - OpenLayers example:
+    // -- https://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs/gibs-supported-clients#web_based_clients
+    // - Important Notes
+    // -- Non-polar tiled imagery from GIBS is currently only available
+    //    in the geographic projection (also known as equirectangular,
+    //    equidistant cylindrical, or EPSG:4326). We realize that many
+    //    web mapping clients require tiles to be in the web mercator
+    //    projection system (e.g., Google Maps, OpenStreetMap) and are
+    //    actively working to provide imagery in both formats.
+    // -- The ordering of Key-Value Pairs for WMTS or TWMS requests is
+    //    relatively inflexible; the servers are configured to respond to
+    //    the parameter ordering used by popular map clients (see
+    //    Supported Clients).
 
-        // TODO: Getting bad request for some tiles: [ask Cesium folks? is it EPSG4326 projection issues?]
-        // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=3&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=6&TILECOL=6&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
-        // <Exception exceptionCode="TileOutOfRange" locator="TILEROW">
-        //   <ExceptionText>TILEROW is out of range, maximum value is 4</ExceptionText>
+    // Cesium
+    // - WMTS options: https://cesiumjs.org/Cesium/Build/Documentation/WebMapTileServiceImageryProvider.html
+    // - WMTS Code: Cesium-1.1/Source/Scene/WebMapTileServiceImageryProvider.js
+    // Gets back images! Request URLs look like:
+    // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=1&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=0&TILECOL=1&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
 
-        // We may have to spec a TilingScheme to be GeographicTilingScheme
-        // with the max number of horz and vert tiles in each direction,
-        // from the XML capabilities for the dataset.
-        // https://cesiumjs.org/Cesium/Build/Documentation/GeographicTilingScheme.html
+    // TODO: Getting bad request for some tiles: [ask Cesium folks? is it EPSG4326 projection issues?]
+    // http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi?service=WMTS&VERSION=1.0.0&request=GetTile&TILEMATRIX=3&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor&STYLE=&TILEROW=6&TILECOL=6&TILEMATRIXSET=EPSG4326_250m&FORMAT=image/jpeg
+    // <Exception exceptionCode="TileOutOfRange" locator="TILEROW">
+    //   <ExceptionText>TILEROW is out of range, maximum value is 4</ExceptionText>
 
-        // I can manually append to the url &time=2014-01-01 or similar, but
-        // will have to hack the Cesium code to support this.
+    // We may have to spec a TilingScheme to be GeographicTilingScheme
+    // with the max number of horz and vert tiles in each direction,
+    // from the XML capabilities for the dataset.
+    // https://cesiumjs.org/Cesium/Build/Documentation/GeographicTilingScheme.html
+
+    // I can manually append to the url &time=2014-01-01 or similar, but
+    // will have to hack the Cesium code to support this.
 
     var credit = new Credit('NASA', 'http://nsidc.org/images/logo_nasa_42x35.gif',
                             'https://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs/gibs-access-methods');
     var nasa_gibs_endpoint = 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi'; // Cesium appends '?' if needed
     
+    var eosdisSrc = 'modis';    // default to visiable vie
+    if (endUserOptions.eosdisSrc) {
+        eosdisSrc = endUserOptions.eosdisSrc;
+    }
     var sources = {'modis':   {'layer': 'MODIS_Terra_CorrectedReflectance_TrueColor',
-                               'tmsid': 'EPSG4326_250m',
-                               'format': 'image/jpeg'},
-                   'airs':    {'layer': 'AIRS_CO_Total_Column_Day',
-                               'tmsid': 'EPSG4326_2km',
-                               'format': 'image/png'},
-                   'mlstmp':  {'layer': 'MLS_Temperature_46hPa_Day',
-                               'tmsid': 'EPSG4326_2km',
-                               'format': 'image/png'},
-                   'landtmp': {'layer': 'MODIS_Terra_Land_Surface_Temp_Day',
-                               'tmsid': 'EPSG4326_1km',
-                               'format': 'image/png'},
-                   'omiaero': {'layer': 'OMI_Aerosol_Index',
-                               'tmsid': 'EPSG4326_2km',
-                               'format': 'image/png'},
-                   'refs':    {'layer': 'Reference_Features',
-                               'tmsid': 'EPSG4326_250m',
-                               'format': 'image/png'},
-                   'seatemp': {'layer': 'Sea_Surface_Temp_Blended',
-                               'tmsid': 'EPSG4326_1km',
-                               'format': 'image/png'},
-                   'viirs':   {'layer': 'VIIRS_CityLights_2012',
-                               'tmsid': 'EPSG4326_500m',
-                               'format': 'image/jpeg'},
-                   
-                   };
-    var source = sources[eosdisSrc];
+                                  'tmsid': 'EPSG4326_250m',
+                                  'format': 'image/jpeg'},
+                      'airs':    {'layer': 'AIRS_CO_Total_Column_Day',
+                                  'tmsid': 'EPSG4326_2km',
+                                  'format': 'image/png'},
+                      'mlstmp':  {'layer': 'MLS_Temperature_46hPa_Day',
+                                  'tmsid': 'EPSG4326_2km',
+                                  'format': 'image/png'},
+                      'landtmp': {'layer': 'MODIS_Terra_Land_Surface_Temp_Day',
+                                  'tmsid': 'EPSG4326_1km',
+                                  'format': 'image/png'},
+                      'omiaero': {'layer': 'OMI_Aerosol_Index',
+                                  'tmsid': 'EPSG4326_2km',
+                                  'format': 'image/png'},
+                      'refs':    {'layer': 'Reference_Features',
+                                  'tmsid': 'EPSG4326_250m',
+                                  'format': 'image/png'},
+                      'seatemp': {'layer': 'Sea_Surface_Temp_Blended',
+                                  'tmsid': 'EPSG4326_1km',
+                                  'format': 'image/png'},
+                      'viirs':   {'layer': 'VIIRS_CityLights_2012',
+                                  'tmsid': 'EPSG4326_500m',
+                                  'format': 'image/jpeg'},
+                     };
+    var nasaSource = sources[eosdisSrc];
 
     var wmts = new WebMapTileServiceImageryProvider({
         url: nasa_gibs_endpoint,
-        layer: source.layer,//'MODIS_Terra_CorrectedReflectance_TrueColor',
-        tileMatrixSetID: source.tmsid,//'EPSG4326_250m',
-        format: source.format, //'image/jpeg',   // default is jpeg
+        layer: nasaSource.layer,//'MODIS_Terra_CorrectedReflectance_TrueColor',
+        tileMatrixSetID: nasaSource.tmsid,//'EPSG4326_250m',
+        format: nasaSource.format, //'image/jpeg',   // default is jpeg
         // tileWidth and tileHeight don't seem to affect URL or display
         style: '',       // required but '' or 'default' don't change things
         maximumLevel: 9,
@@ -231,6 +149,30 @@ define([
     });
 
     // NASA GIBS: Tiled WMS 
+    // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?request=GetCapabilities
+
+    // Uh oh, perhaps not complete enough for Cesium?
+    //   Tiled WMS Server maintained by LANCE. Not a full WMS. This file only maintained for WorldWind.
+    // Requests (what's the diff in last 2?): GetCapabilities, GetMap, GetTileService
+
+    // XML out, e.g. for one of the above:
+
+    // <Layer queryable="0">
+    //   <Name>MODIS_Terra_CorrectedReflectance_TrueColor</Name>
+    //   <Title>MODIS_Terra_CorrectedReflectance_TrueColor Title</Title>
+    //   <Abstract>
+    //     MODIS_Terra_CorrectedReflectance_TrueColor Abstract
+    //   </Abstract>
+    //   <LatLonBoundingBox minx="-180" miny="-90" maxx="180" maxy="90"/>
+    //   <Style>
+    //     <Name>default</Name>
+    //     <Title>(default) Default style</Title>
+    //   </Style>
+    //   <Dimension name="time" units="ISO8601" default="2014-09-23" multipleValues="0" nearestValue="0" current="0">2012-05-08/2014-09-23/P1D</Dimension>
+    //   <ScaleHint min="10" max="100"/>
+    //   <MinScaleDenominator>100</MinScaleDenominator>
+    // </Layer>
+
     // 
     // As described in the introduction, the Tiled WMS server offers fast
     // response to a limited number of WMS access patterns - specifically
@@ -245,20 +187,45 @@ define([
     // given combination of layers and associated styles at a given
     // resolution over a defined area.
 
-    // NASA Tile Pattern: http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?request=GetTileService
+    // NASA Tile Pattern described at: http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?request=GetTileService
+    // For example, our Terra_Corrected (time=${time} appears optional):
+    // request=GetMap&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&format=image%2Fjpeg&styles=&width=512&height=512&bbox=-180,81,-171,90
     //
+    // Prefixing with URL endpoint (I get what appears a fractured image):
     // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?request=GetMap&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&format=image%2Fjpeg&styles=&time=2014-09-12&width=512&height=512&bbox=-180,88.875,-178.875,90
 
-    // requested URL like:
+    // I can hack in Cesium's service and version and see images:
+    // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?service=WMS&version=1.1.1&request=GetMap&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&format=image%2Fjpeg&styles=&time=2014-09-12&width=512&height=512&bbox=-180,88.875,-178.875,90
+
+    // After hacking the order in WebMapServiceImageryProvider.js, no image still:
+    // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?service=WMS&version=1.1.1&request=GetMap&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&format=image%2Fjpeg&styles=&time=2014-09-12&width=512&height=512&bbox=0,-90,180,90&
+    // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?service=WMS&version=1.1.1&request=GetMap&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&format=image%2Fjpeg&styles=&time=2014-09-12&width=512&height=512&bbox=90,0,180,90&
+
+    // Cesiumgetmap requests URL like below and gets black, why?:
     // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?service=WMS&version=1.1.1&request=GetMap&styles=&format=image/jpeg&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&bbox=-90,0,0,90&width=256&height=256&
+
+    // If I add in time= I get same black for requested URL like:
+    // http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi?service=WMS&version=1.1.1&request=GetMap&styles=&format=image/jpeg&time=2014-09-12&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&bbox=0,-90,180,90&width=256&height=256&
+
+    // why isn't MY parameters overriding default {service:'WMS', version:'1.1.1', request:'GetMap', styles:'', format:'image/jpeg'
+    // 2014-09-23 I give up, can't seem to get anything that seems right, even the sample images I pull seem "torn" and broken, or else all black.
 
     var twms = new WebMapServiceImageryProvider({
         url: 'http://map1.vis.earthdata.nasa.gov/twms-geo/twms.cgi',
-        layers: source.layer,// TWMS is PLURAL 'MODIS_Terra_CorrectedReflectance_TrueColor',
-        parameters: {'HI':'MOM'},
+        layers: nasaSource.layer,// TWMS is PLURAL 'MODIS_Terra_CorrectedReflectance_TrueColor',
+        tilingScheme: new GeographicTilingScheme(), // no change
+        //parameters: {'time':'2014-09-12'}, // {'HI':'MOM'} becomes &hi=MOM&
+        enablePickFeatures: true,
+        //getFeatureInfoParameters: wtf,
+        getFeatureInfoAsXml: true, // it never asks NASA for Get
+        //rectangle: wtf,
+        //tilingScheme: new GeographicTilingScheme(),
+        tileWidth: 512,
+        tileHeight: 512,
     });
         
-        //imageryProvider = twms;
+    // imageryProvider = twms;
+    // wmts works, but image not wrapped quite right:
     imageryProvider = wmts;
 
     var viewer;
