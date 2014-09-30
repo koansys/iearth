@@ -141,6 +141,9 @@ define([
         layer: nasaSource.layer,//'MODIS_Terra_CorrectedReflectance_TrueColor',
         tileMatrixSetID: nasaSource.tmsid,//'EPSG4326_250m',
         format: nasaSource.format, //'image/jpeg',   // default is jpeg
+        tilingScheme: new GeographicTilingScheme(), // default is WebMercator, not having effect
+        tileWidth: 512,
+        tileHeight: 512,
         // tileWidth and tileHeight don't seem to affect URL or display
         style: '',       // required but '' or 'default' don't change things
         maximumLevel: 9,
