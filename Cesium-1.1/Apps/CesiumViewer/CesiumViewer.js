@@ -1,10 +1,13 @@
 /*global define*/
 define([
+        'Core/Cartesian2',
         'Core/Credit',
         'Core/defined',
         'Core/formatError',
         'Core/getFilenameFromUri',
         'Core/GeographicTilingScheme',
+        'Core/Rectangle',
+        'Core/WebMercatorTilingScheme',
         'DataSources/CzmlDataSource',
         'DataSources/GeoJsonDataSource',
         'Scene/WebMapServiceImageryProvider',
@@ -15,11 +18,14 @@ define([
         'Widgets/Viewer/viewerEntityMixin',
         'domReady!'
     ], function(
+        Cartesian2,
         Credit,
         defined,
         formatError,
         getFilenameFromUri,
         GeographicTilingScheme,
+        Rectangle,
+        WebMercatorTilingScheme,
         CzmlDataSource,
         GeoJsonDataSource,
         WebMapServiceImageryProvider,
@@ -103,8 +109,14 @@ define([
 
     var credit = new Credit('NASA', 'http://nsidc.org/images/logo_nasa_42x35.gif',
                             'https://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs/gibs-access-methods');
-    var nasa_gibs_endpoint = 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi'; // Cesium appends '?' if needed
-    
+    var gibs_endpoint_geographic = 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi'; // Cesium appends '?' if needed
+
+    // List of endpoints including Geographic (EPSG:4326), WebMercator (EPSG:3857)
+    // https://wiki.earthdata.nasa.gov/display/GIBS/GIBS+API+for+Developers#GIBSAPIforDevelopers-ServiceEndpointsandGetCapabilities
+        
+    // MODIS_Terra: lowercorner: -180 85; uppercorner: 180 85
+    var gibs_endpoint_web_mercator = 'http://map1.vis.earthdata.nasa.gov/wmts-webmerc/wmts.cgi';
+
     var eosdisSrc = 'modis';    // default to visiable vie
     if (endUserOptions.eosdisSrc) {
         eosdisSrc = endUserOptions.eosdisSrc;
@@ -137,7 +149,7 @@ define([
     var nasaSource = sources[eosdisSrc];
 
     var wmts = new WebMapTileServiceImageryProvider({
-        url: nasa_gibs_endpoint,
+        url: gibs_endpoint_geographic,
         layer: nasaSource.layer,//'MODIS_Terra_CorrectedReflectance_TrueColor',
         tileMatrixSetID: nasaSource.tmsid,//'EPSG4326_250m',
         format: nasaSource.format, //'image/jpeg',   // default is jpeg
@@ -151,12 +163,88 @@ define([
         time: '2014-01-01',     // not added to URL, need to hack code :-(
     });
 
+    // For sending to Cesium-dev list, concrete values:
     // var wmts = new WebMapTileServiceImageryProvider({
     //     url: 'http://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
     //     layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
     //     tileMatrixSetID: 'EPSG4326_250m',
     //     format: 'image/jpeg',
     //     style: '',
+    // });
+
+    // But this template is not KVP:
+    // http://map1.vis.earthdata.nasa.gov/wmts-webmerc/MODIS_Terra_CorrectedReflectance_TrueColor/default/{Time}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpg
+
+    ///////////////////////////////////////////////////////////////////////////
+    // EPSG:3857 WebMercatorProjection: used by Google Maps, Bing Maps, ESRI ArcGIS Online
+
+    // WebMercator sources
+    // * rectangleSouthwestInMeters, NortheastInMeters Cartesian2
+    // * Rectangle(w,s,e,n) in radians
+
+    // var webmerc_defaults = {format: 'image/jpeg',
+    //                         style: '',
+    //                         tileWidth: 256,
+    //                         tileHeight: 256,
+    //                         tilingScheme: WebMercatorTilingScheme,
+    //                         rectangle: Rectangle.fromDegrees(-180, -85, 180, 85),
+    //                         minimumLevel: 0,
+    //                         maximumLevel: 18,
+    //                         credit: 'webmerc'};
+    
+
+
+    // GetCapabilities doesn't provide the tile size?? perhaps in the header?
+    var webmercs = {'modis':   {'layer': 'MODIS_Terra_CorrectedReflectance_TrueColor',
+                                'tmsid': 'GoogleMapsCompatible_Level9',
+                                'format': 'image/jpeg'},
+                    'airs':    {'layer': 'AIRS_CO_Total_Column_Day',
+                                'tmsid': 'GoogleMapsCompatible_Level6',
+                                'format': 'image/png'},
+                    'mlstmp':  {'layer': 'MLS_Temperature_46hPa_Day',
+                                'tmsid': 'GoogleMapsCompatible_Level6',
+                                'format': 'image/png'},
+                    'landtmp': {'layer': 'MODIS_Terra_Land_Surface_Temp_Day',
+                                'tmsid': 'GoogleMapsCompatible_Level7',
+                                'format': 'image/png'},
+                    'omiaero': {'layer': 'OMI_Aerosol_Index',
+                                'tmsid': 'GoogleMapsCompatible_Level6',
+                                'format': 'image/png'},
+                    'refs':    {'layer': 'Reference_Features',
+                                'tmsid': 'GoogleMapsCompatible_Level9',
+                                'format': 'image/png'},
+                    // PROBLEM: returns a blue globe, but no errors
+                    'seatemp': {'layer': 'Sea_Surface_Temp_Blended',
+                                'tmsid': 'GoogleMapsCompatible_Level7',
+                                'format': 'image/png'},
+                    'viirs':   {'layer': 'VIIRS_CityLights_2012',
+                                'tmsid': 'GoogleMapsCompatible_Level8',
+                                'format': 'image/jpeg'},
+                     };
+
+    var webmerc_src = webmercs[eosdisSrc];
+
+    var wmts_webmerc = new WebMapTileServiceImageryProvider({
+        url: gibs_endpoint_web_mercator,
+        layer: webmerc_src.layer,
+        tileMatrixSetID: webmerc_src.tmsid,
+        format: webmerc_src.format,
+        style: '',
+        credit: 'WebMercator: ' + webmerc_src.layer + ' ' + webmerc_src.tmsid,
+        time: '2014-01-01',     // not added to URL, need to hack code :-(
+    });
+
+    // var wmts_webmerc = new WebMapTileServiceImageryProvider({
+    //     url: 'http://map1.vis.earthdata.nasa.gov/wmts-webmerc/wmts.cgi',
+    //     layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
+    //     tileMatrixSetID: 'GoogleMapsCompatible_Level9',
+    //     format: 'image/jpeg',
+    //     style: '',
+    //     // I'm not seeing any difference at the poles with these coordinate bounds
+    //     //tilingScheme: new WebMercatorTilingScheme(new Cartesian2(-20037508.34278925, -20037508.34278925),
+    //     //                                          new Cartesian2(+20037508.34278925, +20037508.34278925)),
+    //     // rectangle: Rectangle.fromDegrees(-180, -85, 180, 85), // from GetCapabilities
+    //     credit: 'WMTS-wmts-webmerc'
     // });
 
 
@@ -238,7 +326,8 @@ define([
         
     // imageryProvider = twms;
     // wmts works, but image not wrapped quite right:
-    imageryProvider = wmts;
+    //imageryProvider = wmts;
+    imageryProvider = wmts_webmerc;
 
     var viewer;
     try {
