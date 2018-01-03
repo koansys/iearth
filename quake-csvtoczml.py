@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # convert USGS earthquake CSV to CZML
-# zcml: https://github.com/AnalyticalGraphicsInc/cesium/wiki/CZML-Structure
+# czml: https://github.com/AnalyticalGraphicsInc/cesium/wiki/CZML-Structure
 # CSV: time,latitude,longitude,depth,mag,magType,nst,gap,dmin,rms,net,id,updated,place,type
 #      depth is Km, Cesium uses meters
 # Get CSV (or GeoJson or KML) from:
@@ -8,7 +8,7 @@
 
 # Plot lat/lon on surface sized and colored by magnitude,
 # and draw line down to depth.
-# Drag resulting ZCML file to Cesium:
+# Drag resulting CZML file to Cesium:
 #  http://cesiumjs.org/Cesium/Build/Apps/CesiumViewer/index.html
 
 # TODO:
@@ -18,18 +18,28 @@
 import csv
 import datetime
 import json
-import logging
+from sys import argv
 
-CSVFILE = '2.5_month.csv'
+try:
+    csv_name = argv[1]
+except KeyError:
+    raise KeyError('Usage: {} <quakefilename.csv>'.format(argv[0]))
 MIN_MAG = 2.5
 MAX_MAG = 6.0
 
+datemin = None
+datemax = None
 now = datetime.datetime.utcnow().isoformat().replace('-', '').replace(':', '')[:15] + 'Z'
 quakes = [{'id': 'document', 'version': '1.0'}]
 
-with open(CSVFILE, 'r') as csvfile:
+with open(csv_name, 'r') as csvfile:
     for row in csv.DictReader(csvfile):
         time = row['time'].replace('-', '').replace(':', '').replace('.000', '')
+        if not datemin or datemin > time:
+            datemin = time
+        if not datemax or datemax < time:
+            datemax = time
+
         lon = float(row['longitude'])
         lat = float(row['latitude'])
         mag = float(row['mag'])
@@ -55,6 +65,9 @@ with open(CSVFILE, 'r') as csvfile:
             }
         quakes.append(quake)
 
-print json.dumps(quakes, indent=4, sort_keys=True)
-
+print 'datemin={} datemax={}'.format(datemin, datemax)
+czml_name = argv[1] + '.czml'
+with open(czml_name, 'w') as czml:
+    czml.write(json.dumps(quakes, indent=4, sort_keys=True))
+    print 'Wrote CZML to {}'.format(czml_name)
 
