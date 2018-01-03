@@ -1,39 +1,50 @@
 /*global define*/
 define([
-        'Core/Cartesian2',
-        'Core/Credit',
-        'Core/defined',
-        'Core/formatError',
-        'Core/getFilenameFromUri',
-        'Core/GeographicTilingScheme',
-        'Core/Rectangle',
-        'Core/WebMercatorTilingScheme',
-        'DataSources/CzmlDataSource',
-        'DataSources/GeoJsonDataSource',
-        'Scene/WebMapServiceImageryProvider',
-        'Scene/WebMapTileServiceImageryProvider',
-        'Widgets/Viewer/Viewer',
-        'Widgets/Viewer/viewerCesiumInspectorMixin',
-        'Widgets/Viewer/viewerDragDropMixin',
-        'Widgets/Viewer/viewerEntityMixin',
-        'domReady!'
-    ], function(
-        Cartesian2,
-        Credit,
-        defined,
-        formatError,
-        getFilenameFromUri,
-        GeographicTilingScheme,
-        Rectangle,
-        WebMercatorTilingScheme,
-        CzmlDataSource,
-        GeoJsonDataSource,
-        WebMapServiceImageryProvider,
-        WebMapTileServiceImageryProvider,
-        Viewer,
-        viewerCesiumInspectorMixin,
-        viewerDragDropMixin,
-        viewerEntityMixin) {
+    'Core/Cartesian2',
+    'Core/Credit',
+    'Core/buildModuleUrl',
+    'Core/defined',
+    'Core/formatError',
+    'Core/getFilenameFromUri',
+    'Core/GeographicTilingScheme',
+    'Core/Rectangle',
+    'Core/WebMercatorTilingScheme',
+    'DataSources/CzmlDataSource',
+    'DataSources/GeoJsonDataSource',
+    'Scene/Globe',
+    'Scene/WebMapServiceImageryProvider',
+    'Scene/WebMapTileServiceImageryProvider',
+    'Widgets/BaseLayerPicker/BaseLayerPicker',
+    'Widgets/BaseLayerPicker/ProviderViewModel',
+    'Widgets/CesiumWidget/CesiumWidget',
+    'Widgets/Viewer/Viewer',
+    'Widgets/Viewer/viewerCesiumInspectorMixin',
+    'Widgets/Viewer/viewerDragDropMixin',
+    'Widgets/Viewer/viewerEntityMixin',
+    'domReady!'
+], function(
+    Cartesian2,
+    Credit,
+    buildModuleUrl,
+    defined,
+    formatError,
+    getFilenameFromUri,
+    GeographicTilingScheme,
+    Rectangle,
+    WebMercatorTilingScheme,
+    CzmlDataSource,
+    GeoJsonDataSource,
+    Globe,
+    WebMapServiceImageryProvider,
+    WebMapTileServiceImageryProvider,
+    BaseLayerPicker,
+    ProviderViewModel,
+    CesiumWidget,
+    Viewer,
+    viewerCesiumInspectorMixin,
+    viewerDragDropMixin,
+    viewerEntityMixin) {
+
     "use strict";
     /*global console, document, window*/
 
@@ -59,13 +70,13 @@ define([
     }
 
     var loadingIndicator = document.getElementById('loadingIndicator');
-
+    
     // I can manually append to the url &time=2014-01-01 or similar, but
     // will have to hack the Cesium code to support this.
 
     // List of endpoints including Geographic (EPSG:4326), WebMercator (EPSG:3857)
     // https://wiki.earthdata.nasa.gov/display/GIBS/GIBS+API+for+Developers#GIBSAPIforDevelopers-ServiceEndpointsandGetCapabilities
-        
+    
     var gibs_endpoint_web_mercator = 'http://map1.vis.earthdata.nasa.gov/wmts-webmerc/wmts.cgi';
 
     var eosdisSrc = 'modis';    // default to visiable vie
@@ -115,7 +126,40 @@ define([
                     'viirs':   {'layer': 'VIIRS_CityLights_2012',
                                 'tmsid': 'GoogleMapsCompatible_Level8',
                                 'format': 'image/jpeg'},
-                     };
+                   };
+
+    // define some base maps: earth at night, reference features
+    var referencesImageryProvider = new WebMapTileServiceImageryProvider({
+        style: '',
+        url:             gibs_endpoint_web_mercator,
+        layer:           webmercs.refs.layer,
+        tileMatrixSetID: webmercs.refs.tmsid,
+        format:          webmercs.refs.format,
+    });
+    var earthnightImageryProvider = new WebMapTileServiceImageryProvider({
+        style: '',
+        url:             gibs_endpoint_web_mercator,
+        layer:           webmercs.viirs.layer,
+        tileMatrixSetID: webmercs.viirs.tmsid,
+        format:          webmercs.viirs.format,
+    });
+    var baseLayers = [];
+    baseLayers.push(new ProviderViewModel({
+        name: 'Reference Outlines',
+        iconUrl:  buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
+        tooltip : 'Outlines of countries...',
+        creationFunction : function() {
+            return referencesImageryProvider;
+        },
+    }));
+    baseLayers.push(new ProviderViewModel({
+        name: 'Earth at Night',
+        iconUrl:  buildModuleUrl('Widgets/Images/ImageryProviders/blackMarble.png'),
+        tooltip : 'Outlines of countries...',
+        creationFunction : function() {
+            return earthnightImageryProvider;
+        },
+    }));
 
     var webmerc_src = webmercs[eosdisSrc];
 
@@ -130,15 +174,22 @@ define([
     });
 
     var imageryProvider = wmts_webmerc;
+    imageryProvider = undefined;
+
 
     ///////////////////////////////////////////////////////////////////////////
     var viewer;
     try {
-        viewer = new Viewer('cesiumContainer', {
-            imageryProvider : imageryProvider,
-            baseLayerPicker : !defined(imageryProvider),
-            scene3DOnly : endUserOptions.scene3DOnly
-        });
+        // viewer = new Viewer('cesiumContainer', {
+        //     imageryProvider : imageryProvider,
+        //     baseLayerPicker : !defined(imageryProvider),
+        //     scene3DOnly : endUserOptions.scene3DOnly
+        // });
+        viewer = new Viewer('cesiumContainer', {baseLayerPicker : false}
+
+       
+        //viewer = new CesiumWidget('cesiumContainer', {imageryProvider: false});
+            
     } catch (exception) {
         loadingIndicator.style.display = 'none';
         var message = formatError(exception);
@@ -148,6 +199,14 @@ define([
         }
         return;
     }
+
+    // var layers = viewer.scene.imageryLayers;
+    // var baseLayerPicker = new BaseLayerPicker('baseLayerPickerContainer',
+    //                                           {globe: new Globe(),
+    //                                           });
+    /////layers, baseLayers);
+    //baseLayerPicker.viewModel.selectedItems = baseLayers[0];
+
 
     viewer.extend(viewerDragDropMixin);
     viewer.extend(viewerEntityMixin);
