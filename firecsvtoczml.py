@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # https://firms.modaps.eosdis.nasa.gov/active_fire/text/Global_24h.csv
 # https://firms.modaps.eosdis.nasa.gov/active_fire/text/Global_7d.csv
-# Drag resulting ZCML file to Cesium:
+# Drag resulting CZML file to Cesium:
 #  http://cesiumjs.org/Cesium/Build/Apps/CesiumViewer/index.html
 
 #latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,confidence,version,bright_t31,frp
