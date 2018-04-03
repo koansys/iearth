@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-# https://firms.modaps.eosdis.nasa.gov/active_fire/text/Global_24h.csv
-# https://firms.modaps.eosdis.nasa.gov/active_fire/text/Global_7d.csv
+# Fire data can be found here:
+# https://firms.modaps.eosdis.nasa.gov/active_fire/#firms-txt
+# Convert it like:
+#  firecsvtczml.py MODIS_C6_Global_7d.csv
 # Drag resulting CZML file to Cesium:
 #  http://cesiumjs.org/Cesium/Build/Apps/CesiumViewer/index.html
 
@@ -12,8 +14,13 @@
 import csv
 import datetime
 import json
+import sys
 
-CSVFILE = 'Global_24h.csv'
+try:
+    CSVFILE = sys.argv[1]
+except IndexError:
+    raise IndexError('Provide the CSV file with the fire data')
+ZCMLFILE = CSVFILE.replace('.csv', '.czml')
 MIN_MAG = 300
 MAX_MAG = 500
 
@@ -44,6 +51,5 @@ with open(CSVFILE, 'r') as csvfile:
             }
         fires.append(fire)
         id += 1
-print json.dumps(fires)
-
-
+with open(ZCMLFILE, 'w') as zcmlfile:
+    zcmlfile.write(json.dumps(fires))

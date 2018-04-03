@@ -70,8 +70,14 @@ Drag your new czml file to the globe and give it a few seconds to process.
 Fires
 =====
 
-There are similar datasets and a conversion program here for fires.
-Docs TBD.
+There are similar `datasets about active fires and hotspots from EOSDIS
+<https://firms.modaps.eosdis.nasa.gov/active_fire/#firms-txt>`_. The
+converstion program can be run like::
+
+  ./firecsvtoczml.py MODIS_C6_Global_7d.csv
+
+and outputs a CZML file, in this case, ``MODIS_C6_Global_7d.czml``.
+
 
 Earth Satellite Data
 ====================
