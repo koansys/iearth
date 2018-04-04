@@ -7,6 +7,7 @@
 #  http://cesiumjs.org/Cesium/Build/Apps/CesiumViewer/index.html
 
 #latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,confidence,version,bright_t31,frp
+# Satellite is T=Terra, A=Aqua
 
 # Plot lat, lon, brightness based on timestamp
 # what's bright_t31 and frp?
@@ -41,10 +42,17 @@ with open(CSVFILE, 'r') as csvfile:
         name = 'b%s t%s %s/%s/%s' % (
             row['brightness'], row['bright_t31'],
             row['satellite'], row['scan'], row['track']),
+        if row['satellite'] == 'T':  # Terra, use Red
+            rgba = [255, mag_color, 0, 255]
+        elif row['satellite'] == 'A':  # Aqua, use Blue
+            rgba = [0, mag_color, 255, 255]
+        else:
+            raise RuntimeError('not T or A satellite=%s', row['satellite'])
+
         fire = {'id': str(id),
                 'availability': datetime + '/' + now,
                 'position': {'cartographicDegrees': [row['longitude'], row['latitude'], 0]},
-                'point': {'color': {'rgba': [255, mag_color, 0, 255]},
+                'point': {'color': {'rgba': rgba},
                           'pixelSize': 5,
                           },
                 'name': name,
